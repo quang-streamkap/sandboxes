@@ -7,7 +7,7 @@ module "aks" {
   automatic_channel_upgrade = "patch"
   agents_availability_zones = ["1", "2"]
   agents_count              = null
-  agents_max_count          = 2
+  agents_max_count          = 4
   agents_max_pods           = 100
   agents_min_count          = 1
   agents_pool_name          = "agents"
@@ -24,13 +24,18 @@ module "aks" {
     }
   ]
   agents_type            = "VirtualMachineScaleSets"
+  agents_labels         = {
+    "workload" = "common"
+  }
   azure_policy_enabled   = true
   enable_auto_scaling    = true
   enable_host_encryption = false
+  oidc_issuer_enabled   = true
+  workload_identity_enabled = true
 
   green_field_application_gateway_for_ingress = {
     name        = "ingress"
-    subnet_cidr = local.appgw_cidr
+    subnet_cidr = local.subnet_cidrs[0]
   }
   create_role_assignments_for_application_gateway = true
   local_account_disabled                          = false
@@ -39,13 +44,15 @@ module "aks" {
   net_profile_service_cidr                        = local.service_cidr
   network_plugin                                  = "azure"
   network_policy                                  = "azure"
-  os_disk_size_gb                                 = 60
+  os_disk_size_gb                                 = 100
   private_cluster_enabled                         = false
   rbac_aad                                        = true
   rbac_aad_managed                                = true
   role_based_access_control_enabled               = true
   sku_tier                                        = "Standard"
+  agents_size                                     = "Standard_D8s_v3"
   vnet_subnet_id                                  = module.network.vnet_subnets[0]
+
   attached_acr_id_map = {
     "${azurerm_container_registry.acr.name}" = azurerm_container_registry.acr.id
   }

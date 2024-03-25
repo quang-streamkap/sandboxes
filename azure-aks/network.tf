@@ -1,14 +1,13 @@
 locals {
   // we create a network with two address spaces - one for node pool subnets and one for services, gateways etc.
-  address_spaces = ["10.0.0.0/16", "10.2.0.0/16"]
+  address_spaces = ["172.29.0.0/24"]
   // node pool subnets
-  subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  subnet_names = ["a", "b", "c"]
+  subnet_cidrs = ["172.29.0.0/24"]
+  subnet_names = ["streamkap",]
 
   // app and services
-  appgw_cidr = "10.2.0.0/24"
-  service_cidr = "10.2.1.0/24"
-  dns_service_ip = "10.2.1.10"
+  service_cidr = "10.0.0.0/24"
+  dns_service_ip = "10.0.0.10"
 }
 
 module "network" {
@@ -21,9 +20,7 @@ module "network" {
   subnet_names        = local.subnet_names
 
   subnet_service_endpoints = {
-    "subnet1" : ["Microsoft.Sql"],
-    "subnet2" : ["Microsoft.Sql"],
-    "subnet3" : ["Microsoft.Sql"]
+    "streamkap" : ["Microsoft.Storage"]
   }
   use_for_each = true
   tags = {
@@ -33,10 +30,3 @@ module "network" {
 
   depends_on = [azurerm_resource_group.rg]
 }
-
-#resource "azurerm_subnet" "appgw" {
-  #address_prefixes     = [local.appgw_cidr]
-  #name                 = "${var.nuon_id}-gw"
-  #resource_group_name = azurerm_resource_group.rg.name
-  #virtual_network_name = module.network.vnet_name
-#}
