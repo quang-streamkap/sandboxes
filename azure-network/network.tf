@@ -9,6 +9,22 @@ locals {
   service_cidr = "10.0.0.0/24"
   dns_service_ip = "10.0.0.10"
   name_prefix = "streamkap"
+
+  aws_networks =  [
+    {
+      local_gw_name         = "eks-dev-tunnel1"
+      local_gateway_address = "44.231.252.235"
+      local_address_space   = ["10.30.0.0/16"]
+      shared_key            = "qFQ6oR4wdccL0fdwyXENGgSfsQlVyl.D"
+    },
+    {
+      local_gw_name         = "eks-dev-tunnel2"
+      local_gateway_address = "44.237.20.42"
+      local_address_space   = ["10.30.0.0/16"]
+      shared_key            = "pqjJ9.YRAkcGQHh4pdSlPaBhmM1FAnBq"
+    },
+  ]
+
   tags = merge(var.tags,{
     environment = "dev"
     costcenter  = "it"
@@ -80,4 +96,37 @@ resource "azurerm_virtual_network_gateway" "vpngw" {
   tags = local.tags
 
   depends_on = [module.network]
+}
+
+#---------------------------
+# Local Network Gateway
+#---------------------------
+resource "azurerm_local_network_gateway" "localgw" {
+  count               = length(local.aws_networks)
+  name                = "streamkap-${local.aws_networks[count.index].local_gw_name}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  gateway_address     = local.aws_networks[count.index].local_gateway_address
+  address_space       = local.aws_networks[count.index].local_address_space
+
+  tags = local.tags
+}
+
+#---------------------------------------
+# Virtual Network Gateway Connection
+#---------------------------------------
+resource "azurerm_virtual_network_gateway_connection" "az-hub-aws" {
+  count                           = length(local.aws_networks)
+  name                            = "localgw-connection-${local.aws_networks[count.index].local_gw_name}"
+  resource_group_name             = azurerm_resource_group.rg.name
+  location                        = azurerm_resource_group.rg.location
+  type                            = "IPsec"
+  virtual_network_gateway_id      = azurerm_virtual_network_gateway.vpngw.id
+  local_network_gateway_id        = azurerm_local_network_gateway.localgw[count.index].id
+  express_route_circuit_id        = null
+  peer_virtual_network_gateway_id = null
+  shared_key                      = local.aws_networks[count.index].shared_key
+  connection_protocol             = "IKEv2"
+
+  tags = local.tags
 }
